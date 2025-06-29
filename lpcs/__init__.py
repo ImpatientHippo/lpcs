@@ -53,10 +53,7 @@ class SaveFile(PTNodeVisitor):
     return children
 
   def visit_mapping(self,node,children):
-    res = dict()
-    for c in children:
-      res[c[0]] = c[1:]
-    return res
+    return { c[0]: c[1:] for c in children }
 
   def visit_assignment(self,node,children):
     return [ children[0], children[2] ]
@@ -68,10 +65,7 @@ class SaveFile(PTNodeVisitor):
     return LWObject( children[0], children[1:] )
 
   def visit_save_file(self,node,children):
-    res = dict()
-    for a in children:
-      res[a[0]] = a[1]
-    return res
+    return { a[0]: a[1] for a in children }
 
   def visit_line(self,node,children):
     return children[0]
