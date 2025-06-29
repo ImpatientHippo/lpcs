@@ -12,7 +12,7 @@ def line():        return assignment, _(r"\s*\n")
 def header():      return '#3:2'
 def assignment():  return var_name, _(r"\s+"), lpc_value
 def var_name():    return _("[a-zA-Z_][a-zA-Z0-9_]*")
-def lpc_value():   return [ number , str_literal, array, mapping, closure, ref ]
+def lpc_value():   return [ number , str_literal, array, mapping, struct, lwobject, closure, ref ]
 def space():       return _(r"\s")
 
 def ref():         return "<", _(r"[0-9]+"), ">", Optional(anchor)
@@ -21,7 +21,9 @@ def anchor():      return "=", lpc_value
 def array():       return "({" , ZeroOrMore( lpc_value, "," ), "})"
 def mapping():     return "([", ZeroOrMore( entry, "," ), "])"
 def entry():       return lpc_value, ":", lpc_value, ZeroOrMore( ";", lpc_value )
-def number():     return _(r"-?\d+(\.\d+)?([eE]-?\d+)?")
+def struct():      return "(<", str_literal, ",", ZeroOrMore( lpc_value, "," ), ">)"
+def lwobject():    return "(*", str_literal, ",", ZeroOrMore( lpc_value, "," ), "*)"
+def number():      return _(r"-?\d+(\.\d+)?([eE]-?\d+)?")
 def str_literal(): return '"', _(r'([^"\\\n]|\\.)*'), '"'
 def closure():     return "#'", var_name
 
@@ -59,6 +61,12 @@ class SaveFile(PTNodeVisitor):
   def visit_assignment(self,node,children):
     return [ children[0], children[2] ]
 
+  def visit_struct(self,node,children):
+    return Struct( children[0], children[1:] )
+
+  def visit_lwobject(self,node,children):
+    return LWObject( children[0], children[1:] )
+
   def visit_save_file(self,node,children):
     res = dict()
     for a in children:
@@ -78,15 +86,46 @@ class SaveFile(PTNodeVisitor):
     return Ref(self,children[0])
 
 class Ref:
-  def __init__(self,sf,key):
-    self.sf = sf
+  """
+    Wrapper for a reference inside a save_file.
+  """
+  def __init__(self,context:SaveFile,key:str):
+    self.context = context
     self.key = key
-  def __repr__(self):
-    return repr(self.sf.refs[self.key])
-  def __str__(self):
-    return str(self.sf.refs[self.key])
-  def deref(self):
-    return self.sf.refs[self.key]
+
+  def deref(self) -> any:
+    return self.context.refs[self.key]
+
+  def __lpc_dump__(self) -> str:
+    return _lpc_dumps_value( self.deref() )
+
+class Struct:
+  """
+    Wrapper class for LPC Structs.
+    Members are
+    * descr, the descriptor (which is not further analyzed)
+    * params list of arguments
+  """
+  def __init__(self,descr:str,params:[str]):
+    self.descr = descr
+    self.params = [ p for p in params ]
+
+  def __lpc_dump__(self) -> str:
+    return "(<" + _lpc_dumps_value(self.descr) + "," + "".join([ _lpc_dumps_value(e)+"," for e in self.params ]) + ">)"
+
+class LWObject:
+  """
+    Wrapper class for LPC Lightweight Objects.
+    Members are
+    * descr, the descriptor (which is not further analyzed)
+    * params list of arguments
+  """
+  def __init__(self,descr:str,params:[str]):
+    self.descr = descr
+    self.params = [ p for p in params ]
+
+  def __lpc_dump__(self) -> str:
+    return "(*" + _lpc_dumps_value(self.descr) + "," + "".join([ _lpc_dumps_value(e)+"," for e in self.params ]) + "*)"
 
 def lpc_loads( data: str ) -> any:
   """
@@ -110,8 +149,8 @@ def _lpc_dumps_value( value ):
     return "({" + "".join([ _lpc_dumps_value(e)+"," for e in value ]) + "})"
   if t is dict:
     return "([" + "".join([ f'"{k}":{_dump_map_entry(v)},' for k,v in value.items() ]) + "])"
-  if t is Ref:
-    return _lpc_dumps_value( value.deref() )
+  if hasattr(value,"__lpc_dump__"):
+    return value.__lpc_dump__()
   raise ValueError( f"unexpected type {t}" )
 
 def lpc_dumps( data: any ) -> str:

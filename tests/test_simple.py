@@ -11,4 +11,5 @@ with open(savefile,"r") as f:
   data = f.read()
 
 sf = lpcs.lpc_loads(data)
+print( sf["name"] )
 print( lpcs.lpc_dumps(sf) )

@@ -8,8 +8,11 @@ ints, floats are transformed into their Python equivalent, string escapes will o
 Arrays are transformed into lists and mappings are transformed into dicts mapping from string to a list
 (as LPC mappings may contain more than one value).
 
+Structs and lightweight objects are being wrapped by extra objects.
+
 The writer is intended to transform these data structures back into their original form.
 However, refs, being duplicated when read, will be written as multiple copies.
+
 
 There is a lot left to do:
 
@@ -22,7 +25,8 @@ There is a lot left to do:
 
 ```
 data = lpcs.lpc_load( "filename.o" )
-# do sth with data
+print( data["varname"] )
+# ...
 lpcs.lpc_dump( "filename.o", data )
 print( lpcs.lpc_dumps(data) )
 ```
