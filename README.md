@@ -1,5 +1,5 @@
 # lpcs
-LPC savefile reader for python
+[LPC](https://de.wikipedia.org/wiki/LPC_(Programmiersprache))  savefile reader for python
 
 This is a simple save file reader (and writer) for lpc savefiles (in the `#3:2` flavour)
 
