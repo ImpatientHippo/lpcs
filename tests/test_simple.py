@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-sys.path.insert(1, '../..')
+sys.path.insert(1, '.')
 
 import lpcs
 
