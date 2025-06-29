@@ -1,0 +1,172 @@
+
+from arpeggio import (
+  Optional, ZeroOrMore, OneOrMore, ParserPython, EOF,
+  PTNodeVisitor, visit_parse_tree
+)
+from arpeggio import RegExMatch as _
+
+### Grammar
+def save_file():   return header, "\n", ZeroOrMore(line), EOF
+def line():        return assignment, _(r"\s*\n") 
+
+def header():      return '#3:2'
+def assignment():  return var_name, _(r"\s+"), lpc_value
+def var_name():    return _("[a-zA-Z_][a-zA-Z0-9_]*")
+def lpc_value():   return [ number , str_literal, array, mapping, closure, ref ]
+def space():       return _(r"\s")
+
+def ref():         return "<", _(r"[0-9]+"), ">", Optional(anchor)
+def anchor():      return "=", lpc_value
+
+def array():       return "({" , ZeroOrMore( lpc_value, "," ), "})"
+def mapping():     return "([", ZeroOrMore( entry, "," ), "])"
+def entry():       return lpc_value, ":", lpc_value, ZeroOrMore( ";", lpc_value )
+def number():     return _(r"-?\d+(\.\d+)?([eE]-?\d+)?")
+def str_literal(): return '"', _(r'([^"\\\n]|\\.)*'), '"'
+def closure():     return "#'", var_name
+
+### Analysis
+class SaveFile(PTNodeVisitor):
+
+  refs = {}
+
+  def visit_number(self,node,children):
+    if "." in node.value or "e" in node.value or "E" in node.value:
+      return float(node.value)
+    return int(node.value)
+
+  def visit_str_literal(self,node,children):
+    return unescape(children[0])
+
+  def visit_closure(self,node,children):
+    return "#'"+children[0]
+
+  def visit_array(self,node,children):
+    return [ c for c in children ]
+
+  def visit_lpc_value(self,node,children):
+    return children[0]
+
+  def visit_entry(self,node,children):
+    return children
+
+  def visit_mapping(self,node,children):
+    res = dict()
+    for c in children:
+      res[c[0]] = c[1:]
+    return res
+
+  def visit_assignment(self,node,children):
+    return [ children[0], children[2] ]
+
+  def visit_save_file(self,node,children):
+    res = dict()
+    for a in children:
+      res[a[0]] = a[1]
+    return res
+
+  def visit_line(self,node,children):
+    return children[0]
+
+  def visit_anchor(self,node,children):
+    return children[0]
+
+  def visit_ref(self,node,children):
+    if len(children)>1:
+      self.refs[children[0]] = children[1]
+      return children[1]
+    return Ref(self,children[0])
+
+class Ref:
+  def __init__(self,sf,key):
+    self.sf = sf
+    self.key = key
+  def __repr__(self):
+    return repr(self.sf.refs[self.key])
+  def __str__(self):
+    return str(self.sf.refs[self.key])
+  def deref(self):
+    return self.sf.refs[self.key]
+
+def lpc_loads( data: str ) -> any:
+  """
+    Transform string content of a savefile into pythonic
+    datastructure. Note that mappings end up as dicts with
+    an array as value, because mappsings my have more than
+    one value.
+  """
+  return visit_parse_tree( parser.parse(data), SaveFile() )
+
+def _dump_map_entry( e ):
+  return ";".join([ _lpc_dumps_value(v) for v in e ])
+
+def _lpc_dumps_value( value ):
+  t = type(value)
+  if t in [ int ,float ]:
+    return str(value)
+  if t is str:
+    return '"'+escape(str(value))+'"'
+  if t is list:
+    return "({" + "".join([ _lpc_dumps_value(e)+"," for e in value ]) + "})"
+  if t is dict:
+    return "([" + "".join([ f'"{k}":{_dump_map_entry(v)},' for k,v in value.items() ]) + "])"
+  if t is Ref:
+    return _lpc_dumps_value( value.deref() )
+  raise ValueError( f"unexpected type {t}" )
+
+def lpc_dumps( data: any ) -> str:
+  """
+    Create String content of a savefile for data.
+  """
+  text = "#3:2\n"
+  for name,value in data.items():
+    text += name + " " + _lpc_dumps_value(value) + "\n"
+  return text
+
+def lpc_load( file:str ) -> str:
+  """
+    Loads savefile and returns datastructure.
+  """
+  with open(file,"r") as f:
+    return lpc_loads( f.read() )
+
+def lpc_dump( file: str, data:any ) -> None:
+  """
+    Saves Datastructure from data to file.
+  """
+  with open(file,"w") as f:
+    f.write(lpc_dumps(data))
+
+def unescape( text: str ) -> str:
+  """
+    Simple Version of escaping special chars in strings.
+    handles \n, \ and " only.
+  """
+  res = ""
+  esc = False
+  for c in text:
+    if esc:
+      if c=="n":
+        res += "\n"
+      elif c=='"':
+        res += '"'
+      else:
+        res += c
+      esc = False
+    elif c=="\\":
+      esc = True
+    else:
+      res += c
+  if esc:
+    raise ValueError( "String ends with incomplete \\" )
+  return res
+  
+def escape( text: str ) -> str:
+  """
+    Simple Version of escaping special chars in strings.
+    handles \n, \ and " only.
+  """
+  return text.replace( "\\", "\\\\" ).replace( "\n", "\\n" ).replace( "\"", "\\\"" )
+
+parser = ParserPython(save_file,skipws=False)
+

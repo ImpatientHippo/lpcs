@@ -1,0 +1,10 @@
+#3:2
+some_string "test"
+newlines "test\ntest\"and\\must be quoted"
+number 123
+fraction 2.2
+func #'test_1
+map (["one":1,"two":2,])
+imap (["one":1;"x","two":2;"y",])
+arr ({6,7,8,9,})
+double ({<1>="test",<1>,})
