@@ -17,3 +17,10 @@ There is probaby a lot left to do:
 * edge case with number representation
 * proper string escaping and unescaping
 
+# Basic Usage:
+
+```
+data = lpcs.load( "filename.o" )
+# do sth with data
+lpcs.dump( "filename.o", data )
+```
