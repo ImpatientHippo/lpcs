@@ -1,0 +1,9 @@
+[project]
+name = "lpcs"
+version = "0.1.0"
+authors = [
+]
+description = "Tool to read/write LPC savefiles from python."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [ "arpeggio" ]
