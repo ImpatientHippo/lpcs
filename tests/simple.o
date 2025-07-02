@@ -8,6 +8,6 @@ func #'test_1
 map (["one":1,"two":2,])
 imap (["one":1;"x","two":2;"y",])
 arr ({6,7,8,9,})
-double ({<1>="test",<1>,})
+some_ref ({<1>="test",<1>,})
 some_struct (<"Point bla bla",13,14,>)
 some_lwo (*"bla bla",*)

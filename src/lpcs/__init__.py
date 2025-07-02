@@ -59,10 +59,10 @@ class SaveFile(PTNodeVisitor):
     return [ children[0], children[2] ]
 
   def visit_struct(self,node,children):
-    return Struct( children[0], children[1:] )
+    return Struct( children )
 
   def visit_lwobject(self,node,children):
-    return LWObject( children[0], children[1:] )
+    return LWObject( children )
 
   def visit_save_file(self,node,children):
     return { a[0]: a[1] for a in children }
@@ -97,29 +97,44 @@ class Struct:
   """
     Wrapper class for LPC Structs.
     Members are
-    * descr, the descriptor (which is not further analyzed)
-    * params list of arguments
+    * params list of arguments, starting with the description string
   """
-  def __init__(self,descr:str,params:[str]):
-    self.descr = descr
+  def __init__(self,params:[str]):
     self.params = [ p for p in params ]
 
   def __lpc_dump__(self) -> str:
-    return "(<" + _lpc_dumps_value(self.descr) + "," + "".join([ _lpc_dumps_value(e)+"," for e in self.params ]) + ">)"
+    return "(<" + "".join([ _lpc_dumps_value(e)+"," for e in self.params ]) + ">)"
+
+  def __len__( self ) -> int:
+    return len(self.params)
+
+  def __getitem__( self, idx: int ) -> any:
+    return self.params[idx]
+
+  def __setitem__( self, idx: int, value: any ) -> None:
+    self.params[ idx ] = value
 
 class LWObject:
   """
     Wrapper class for LPC Lightweight Objects.
     Members are
-    * descr, the descriptor (which is not further analyzed)
-    * params list of arguments
+    * params list of arguments, starting with the description string
   """
-  def __init__(self,descr:str,params:[str]):
-    self.descr = descr
+  def __init__(self,params:[str]):
     self.params = [ p for p in params ]
 
   def __lpc_dump__(self) -> str:
-    return "(*" + _lpc_dumps_value(self.descr) + "," + "".join([ _lpc_dumps_value(e)+"," for e in self.params ]) + "*)"
+    return "(*" + "".join([ _lpc_dumps_value(e)+"," for e in self.params ]) + "*)"
+
+  def __len__( self ) -> int:
+    return len(self.params)
+
+  def __getitem__( self, idx: int ) -> any:
+    return self.params[idx]
+
+  def __setitem__( self, idx: int, value: any ) -> None:
+    self.params[ idx ] = value
+
 
 def lpc_loads( data: str ) -> any:
   """
